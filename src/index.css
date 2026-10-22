@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light dark;
+  --accent-color: #18181b;
+  --accent-glow: rgba(24, 24, 27, 0.15);
+}
+
+:root.dark {
+  --accent-color: #fafafa;
+  --accent-glow: rgba(250, 250, 250, 0.15);
+}
+
+/* Accent Themes */
+:root[data-accent="blue"] {
+  --accent-color: #2563eb;
+  --accent-glow: rgba(37, 99, 235, 0.25);
+}
+:root[data-accent="emerald"] {
+  --accent-color: #059669;
+  --accent-glow: rgba(5, 150, 105, 0.25);
+}
+:root[data-accent="violet"] {
+  --accent-color: #7c3aed;
+  --accent-glow: rgba(124, 58, 237, 0.25);
+}
+:root[data-accent="amber"] {
+  --accent-color: #d97706;
+  --accent-glow: rgba(217, 119, 6, 0.25);
+}
+:root[data-accent="rose"] {
+  --accent-color: #e11d48;
+  --accent-glow: rgba(225, 29, 72, 0.25);
+}
+
+/* Font Families */
+:root[data-font="tajawal"], :root[data-font="tajawal"] * {
+  font-family: 'Tajawal', sans-serif !important;
+}
+:root[data-font="cairo"], :root[data-font="cairo"] * {
+  font-family: 'Cairo', sans-serif !important;
+}
+:root[data-font="inter"], :root[data-font="inter"] * {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+}
+
+/* Font Sizes */
+:root[data-size="sm"] {
+  font-size: 14px;
+}
+:root[data-size="md"] {
+  font-size: 16px;
+}
+:root[data-size="lg"] {
+  font-size: 18px;
+}
+
+/* Compact Mode */
+:root[data-compact="true"] .p-6 {
+  padding: 1.15rem !important;
+}
+:root[data-compact="true"] .p-4 {
+  padding: 0.85rem !important;
+}
+:root[data-compact="true"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.75rem !important;
+}
+:root[data-compact="true"] .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.55rem !important;
+}
+
+body {
+  @apply antialiased transition-colors duration-200;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}

@@ -1,0 +1,145 @@
+rules_version = '2';
+
+// TaskFlow Firestore Security Rules. Default: deny everything not explicitly allowed below.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function projectPath(pid) {
+      return /databases/$(database)/documents/projects/$(pid);
+    }
+
+    // State of the project BEFORE the current write.
+    function project(pid) {
+      return get(projectPath(pid)).data;
+    }
+
+    function isMemberOf(pid) {
+      return signedIn() && request.auth.uid in project(pid).memberIds;
+    }
+
+    function isOwnerOf(pid) {
+      return signedIn() && project(pid).ownerId == request.auth.uid;
+    }
+
+    function isShortText(v, minLen, maxLen) {
+      return v is string && v.size() >= minLen && v.size() <= maxLen;
+    }
+
+    // ---------- users/{uid}: only the owner of the profile can read it ----------
+    match /users/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['displayName', 'email', 'createdAt'])
+        && request.resource.data.keys().hasAll(['displayName', 'email', 'createdAt'])
+        && isShortText(request.resource.data.displayName, 2, 60)
+        && request.resource.data.email == request.auth.token.email.lower()
+        && request.resource.data.createdAt == request.time;
+      allow list, update, delete: if false;
+    }
+
+    // ---------- userEmails/{email}: narrow lookup used to add members ----------
+    // Exposes only { uid, displayName } for ONE exact email. Listing is impossible.
+    match /userEmails/{email} {
+      allow get: if signedIn();
+      allow create: if signedIn()
+        && email == request.auth.token.email.lower()
+        && request.resource.data.keys().hasOnly(['uid', 'displayName'])
+        && request.resource.data.keys().hasAll(['uid', 'displayName'])
+        && request.resource.data.uid == request.auth.uid
+        && isShortText(request.resource.data.displayName, 2, 60);
+      allow list, update, delete: if false;
+    }
+
+    // ---------- projects/{projectId} ----------
+    match /projects/{pid} {
+      function validProject(d) {
+        return d.keys().hasOnly(['name', 'description', 'ownerId', 'memberIds', 'createdAt', 'updatedAt'])
+          && d.keys().hasAll(['name', 'description', 'ownerId', 'memberIds', 'createdAt', 'updatedAt'])
+          && isShortText(d.name, 3, 80)
+          && isShortText(d.description, 0, 1000)
+          && d.ownerId is string
+          && d.memberIds is list
+          && d.memberIds.size() <= 50
+          && d.ownerId in d.memberIds
+          && d.updatedAt == request.time;
+      }
+
+      // resource == null lets a missing project return "not found" instead of "denied".
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.memberIds);
+      allow list: if signedIn() && request.auth.uid in resource.data.memberIds;
+
+      allow create: if signedIn()
+        && validProject(request.resource.data)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && validProject(request.resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      // ---------- projects/{pid}/members/{uid}: display info for members ----------
+      match /members/{uid} {
+        allow read: if isMemberOf(pid);
+        // getAfter() so the owner's own record can be created in the same batch as the project.
+        allow create, update: if signedIn()
+          && getAfter(projectPath(pid)).data.ownerId == request.auth.uid
+          && uid in getAfter(projectPath(pid)).data.memberIds
+          && request.resource.data.keys().hasOnly(['displayName', 'email'])
+          && request.resource.data.keys().hasAll(['displayName', 'email'])
+          && isShortText(request.resource.data.displayName, 1, 60)
+          && request.resource.data.email is string;
+        allow delete: if isOwnerOf(pid);
+      }
+
+      // ---------- projects/{pid}/tasks/{taskId} ----------
+      match /tasks/{taskId} {
+        function validTask(d) {
+          return d.keys().hasOnly(['title', 'description', 'status', 'priority', 'assigneeId', 'createdBy', 'dueDate', 'createdAt', 'updatedAt'])
+            && d.keys().hasAll(['title', 'description', 'status', 'priority', 'assigneeId', 'createdBy', 'dueDate', 'createdAt', 'updatedAt'])
+            && isShortText(d.title, 3, 120)
+            && isShortText(d.description, 0, 1000)
+            && d.status in ['todo', 'in_progress', 'done']
+            && d.priority in ['low', 'medium', 'high']
+            && (d.assigneeId == null || (d.assigneeId is string && d.assigneeId in project(pid).memberIds))
+            && (d.dueDate == null || d.dueDate is timestamp)
+            && d.updatedAt == request.time;
+        }
+
+        allow read: if isMemberOf(pid);
+
+        allow create: if isMemberOf(pid)
+          && validTask(request.resource.data)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+
+        // Owner: any valid edit. Member: only tasks they created or are assigned to,
+        // and status may change only on tasks assigned to them.
+        allow update: if isMemberOf(pid)
+          && validTask(request.resource.data)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          && (
+            isOwnerOf(pid)
+            || (
+              (resource.data.createdBy == request.auth.uid || resource.data.assigneeId == request.auth.uid)
+              && (request.resource.data.status == resource.data.status || resource.data.assigneeId == request.auth.uid)
+            )
+          );
+
+        allow delete: if isMemberOf(pid)
+          && (isOwnerOf(pid) || resource.data.createdBy == request.auth.uid);
+      }
+    }
+  }
+}
