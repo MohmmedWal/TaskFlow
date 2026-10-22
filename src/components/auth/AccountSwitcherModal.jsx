@@ -18,7 +18,7 @@ export default function AccountSwitcherModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-right"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -49,10 +49,10 @@ export default function AccountSwitcherModal({
 
         {/* Modal Body */}
         <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-medium">
             {savedAccounts.length > 1
-              ? 'اختر الحساب الذي ترغب في الانتقال إليه مباشرة دون الحاجة لإعادة كتابة كلمة المرور:'
-              : 'الحساب النشط حالياً على هذا الجهاز:'}
+              ? 'اختر الحساب الذي تريد التبديل إليه فوراً دون الحاجة لإعادة إدخال كلمة المرور:'
+              : 'الحساب النشط حالياً على هذا المتصفح:'}
           </p>
 
           <div className="space-y-2.5">
@@ -63,13 +63,24 @@ export default function AccountSwitcherModal({
                 account.email?.[0]?.toUpperCase() ||
                 'U';
 
+              const isGoogle =
+                account.provider?.includes('google') || account.email?.toLowerCase().includes('gmail');
+              const isFacebook =
+                account.provider?.includes('facebook') || account.email?.toLowerCase().includes('facebook');
+
               return (
                 <div
                   key={account.uid}
+                  onClick={() => {
+                    if (!isCurrent) {
+                      onSwitchAccount(account);
+                      onClose();
+                    }
+                  }}
                   className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                     isCurrent
-                      ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60 shadow-2xs'
-                      : 'bg-zinc-50/70 dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/80 shadow-2xs'
+                      : 'bg-zinc-50/70 dark:bg-zinc-950/40 border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-white dark:hover:bg-zinc-900 cursor-pointer shadow-2xs'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -94,6 +105,16 @@ export default function AccountSwitcherModal({
                             <span>نشط الآن</span>
                           </span>
                         )}
+                        {isGoogle && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900">
+                            Google
+                          </span>
+                        )}
+                        {isFacebook && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900">
+                            Facebook
+                          </span>
+                        )}
                       </div>
                       <span className="text-[11px] text-zinc-400 font-mono block truncate mt-0.5">
                         {account.email}
@@ -102,7 +123,7 @@ export default function AccountSwitcherModal({
                   </div>
 
                   {/* Actions for this account */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     {!isCurrent && (
                       <>
                         <button
@@ -145,7 +166,7 @@ export default function AccountSwitcherModal({
               className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 text-xs font-bold transition-all cursor-pointer active:scale-98"
             >
               <Plus className="w-4 h-4" />
-              <span>تسجيل الدخول بحساب آخر لإضافته إلى الجهاز</span>
+              <span>تسجيل الدخول بحساب جديد لإضافته لهذا الجهاز</span>
             </button>
           </div>
         </div>
@@ -169,4 +190,3 @@ export default function AccountSwitcherModal({
     </div>
   );
 }
-

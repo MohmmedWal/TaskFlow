@@ -1,63 +1,143 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@variant dark (&:where(.dark, .dark *));
 
+/* Base Reset & Defaults */
 :root {
   color-scheme: light dark;
-  --accent-color: #18181b;
-  --accent-glow: rgba(24, 24, 27, 0.15);
+  --theme-accent: #18181b;
+  --theme-accent-hover: #27272a;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(24, 24, 27, 0.2);
+  --theme-accent-badge: #f4f4f5;
+  --theme-accent-badge-text: #18181b;
 }
 
 :root.dark {
-  --accent-color: #fafafa;
-  --accent-glow: rgba(250, 250, 250, 0.15);
+  --theme-accent: #fafafa;
+  --theme-accent-hover: #ffffff;
+  --theme-accent-text: #09090b;
+  --theme-accent-glow: rgba(250, 250, 250, 0.2);
+  --theme-accent-badge: #27272a;
+  --theme-accent-badge-text: #fafafa;
 }
 
-/* Accent Themes */
-:root[data-accent="blue"] {
-  --accent-color: #2563eb;
-  --accent-glow: rgba(37, 99, 235, 0.25);
-}
-:root[data-accent="emerald"] {
-  --accent-color: #059669;
-  --accent-glow: rgba(5, 150, 105, 0.25);
-}
-:root[data-accent="violet"] {
-  --accent-color: #7c3aed;
-  --accent-glow: rgba(124, 58, 237, 0.25);
-}
-:root[data-accent="amber"] {
-  --accent-color: #d97706;
-  --accent-glow: rgba(217, 119, 6, 0.25);
-}
-:root[data-accent="rose"] {
-  --accent-color: #e11d48;
-  --accent-glow: rgba(225, 29, 72, 0.25);
+/* 1. Theme Accents (Color Palettes) */
+:root[data-accent="blue"], :root.dark[data-accent="blue"] {
+  --theme-accent: #2563eb;
+  --theme-accent-hover: #1d4ed8;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(37, 99, 235, 0.3);
+  --theme-accent-badge: #dbeafe;
+  --theme-accent-badge-text: #1e40af;
 }
 
-/* Font Families */
-:root[data-font="tajawal"], :root[data-font="tajawal"] * {
-  font-family: 'Tajawal', sans-serif !important;
-}
-:root[data-font="cairo"], :root[data-font="cairo"] * {
-  font-family: 'Cairo', sans-serif !important;
-}
-:root[data-font="inter"], :root[data-font="inter"] * {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+:root[data-accent="emerald"], :root.dark[data-accent="emerald"] {
+  --theme-accent: #059669;
+  --theme-accent-hover: #047857;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(5, 150, 105, 0.3);
+  --theme-accent-badge: #d1fae5;
+  --theme-accent-badge-text: #065f46;
 }
 
-/* Font Sizes */
+:root[data-accent="violet"], :root.dark[data-accent="violet"] {
+  --theme-accent: #7c3aed;
+  --theme-accent-hover: #6d28d9;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(124, 58, 237, 0.3);
+  --theme-accent-badge: #ede9fe;
+  --theme-accent-badge-text: #5b21b6;
+}
+
+:root[data-accent="amber"], :root.dark[data-accent="amber"] {
+  --theme-accent: #d97706;
+  --theme-accent-hover: #b45309;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(217, 119, 6, 0.3);
+  --theme-accent-badge: #fef3c7;
+  --theme-accent-badge-text: #92400e;
+}
+
+:root[data-accent="rose"], :root.dark[data-accent="rose"] {
+  --theme-accent: #e11d48;
+  --theme-accent-hover: #be123c;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(225, 29, 72, 0.3);
+  --theme-accent-badge: #ffe4e6;
+  --theme-accent-badge-text: #9f1239;
+}
+
+:root[data-accent="zinc"], :root.dark[data-accent="zinc"] {
+  --theme-accent: #18181b;
+  --theme-accent-hover: #27272a;
+  --theme-accent-text: #ffffff;
+  --theme-accent-glow: rgba(24, 24, 27, 0.2);
+  --theme-accent-badge: #f4f4f5;
+  --theme-accent-badge-text: #18181b;
+}
+:root.dark[data-accent="zinc"] {
+  --theme-accent: #fafafa;
+  --theme-accent-hover: #ffffff;
+  --theme-accent-text: #09090b;
+  --theme-accent-glow: rgba(250, 250, 250, 0.2);
+  --theme-accent-badge: #27272a;
+  --theme-accent-badge-text: #fafafa;
+}
+
+/* Dynamically Transform Primary Buttons, Badges, and Active Navigation */
+:root[data-accent] .bg-zinc-900:not([data-no-accent]),
+:root.dark[data-accent] .dark\:bg-zinc-100:not([data-no-accent]) {
+  background-color: var(--theme-accent) !important;
+  color: var(--theme-accent-text) !important;
+}
+
+:root[data-accent] .bg-zinc-900:not([data-no-accent]):hover,
+:root.dark[data-accent] .dark\:bg-zinc-100:not([data-no-accent]):hover {
+  background-color: var(--theme-accent-hover) !important;
+}
+
+:root[data-accent] .border-zinc-900:not([data-no-accent]),
+:root.dark[data-accent] .dark\:border-zinc-100:not([data-no-accent]) {
+  border-color: var(--theme-accent) !important;
+}
+
+:root[data-accent] .text-zinc-900.font-black,
+:root[data-accent] .dark\:text-zinc-950.font-black {
+  color: var(--theme-accent) !important;
+}
+
+/* 2. Font Families */
+:root[data-font="tajawal"],
+:root[data-font="tajawal"] body,
+:root[data-font="tajawal"] * {
+  font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+:root[data-font="cairo"],
+:root[data-font="cairo"] body,
+:root[data-font="cairo"] * {
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+:root[data-font="inter"],
+:root[data-font="inter"] body,
+:root[data-font="inter"] * {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* 3. Font Sizes */
 :root[data-size="sm"] {
-  font-size: 14px;
+  font-size: 13.5px !important;
 }
 :root[data-size="md"] {
-  font-size: 16px;
+  font-size: 15.5px !important;
 }
 :root[data-size="lg"] {
-  font-size: 18px;
+  font-size: 18px !important;
 }
 
-/* Compact Mode */
+/* 4. Compact Mode */
 :root[data-compact="true"] .p-6 {
   padding: 1.15rem !important;
 }
@@ -71,7 +151,17 @@
   margin-top: 0.55rem !important;
 }
 
+/* 5. Dark Mode Guarantees */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #09090b !important;
+  color: #f4f4f5 !important;
+}
+
 body {
-  @apply antialiased transition-colors duration-200;
+  font-family: 'Tajawal', sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
