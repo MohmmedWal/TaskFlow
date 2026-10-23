@@ -71,10 +71,10 @@ export default function AccountSwitcherModal({
               return (
                 <div
                   key={account.uid}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isCurrent) {
-                      onSwitchAccount(account);
                       onClose();
+                      await onSwitchAccount(account);
                     }
                   }}
                   className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
@@ -128,9 +128,9 @@ export default function AccountSwitcherModal({
                       <>
                         <button
                           type="button"
-                          onClick={() => {
-                            onSwitchAccount(account);
+                          onClick={async () => {
                             onClose();
+                            await onSwitchAccount(account);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 font-bold text-xs transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5"
                           title="التبديل إلى هذا الحساب فوراً"

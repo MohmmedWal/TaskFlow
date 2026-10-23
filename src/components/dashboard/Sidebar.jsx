@@ -290,14 +290,23 @@ export default function Sidebar({
         onClose={() => setIsAccountModalOpen(false)}
         currentUser={currentUser}
         savedAccounts={savedAccounts}
-        onSwitchAccount={(account) => {
-          switchAccount(account);
-          navigate('/dashboard');
+        onSwitchAccount={async (account) => {
+          try {
+            const res = await switchAccount(account);
+            if (res?.redirect) {
+              navigate(`/login?email=${encodeURIComponent(res.email)}`);
+            } else {
+              navigate('/dashboard');
+            }
+          } catch (err) {
+            console.error('Account switch failed:', err);
+          }
         }}
         onRemoveAccount={removeSavedAccount}
         onAddNewAccount={() => {
           setIsAccountModalOpen(false);
           onLogout();
+          navigate('/login');
         }}
       />
     </aside>

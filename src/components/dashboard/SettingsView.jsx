@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Settings,
   User,
@@ -14,14 +15,18 @@ import {
   Maximize2,
   Save,
   Loader2,
+  ArrowLeftRight,
 } from 'lucide-react';
 import AuthContext from '../../context/AuthContext/AuthContext';
 import { useTheme } from '../../context/ThemeContext/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext/LanguageContext';
 import { playAppSound } from '../../lib/audio';
+import AccountSwitcherModal from '../auth/AccountSwitcherModal';
 
 export default function SettingsView({ currentUser }) {
-  const { updateUserProfile } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const { updateUserProfile, savedAccounts = [], switchAccount, removeSavedAccount, logout } = useContext(AuthContext);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const {
     theme,
     setTheme,
@@ -551,18 +556,35 @@ export default function SettingsView({ currentUser }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/70 dark:border-zinc-800/80">
-          <div className="w-11 h-11 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold text-sm flex items-center justify-center shadow-xs flex-shrink-0">
-            {userInitial}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/70 dark:border-zinc-800/80">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-bold text-sm flex items-center justify-center shadow-xs flex-shrink-0">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                {currentUser?.displayName || 'مستخدم مسجل'}
+              </p>
+              <p className="text-[11px] text-zinc-400 font-mono truncate">
+                {currentUser?.email}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
-              {currentUser?.displayName || 'مستخدم مسجل'}
-            </p>
-            <p className="text-[11px] text-zinc-400 font-mono truncate">
-              {currentUser?.email}
-            </p>
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAccountModalOpen(true)}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 text-xs font-bold transition-all shadow-2xs cursor-pointer flex-shrink-0"
+            title="تبديل الحساب"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-zinc-500" />
+            <span>{t('switchAccount') || 'تبديل الحساب'}</span>
+            {savedAccounts.length > 1 && (
+              <span className="w-4 h-4 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] font-bold flex items-center justify-center">
+                {savedAccounts.length}
+              </span>
+            )}
+          </button>
         </div>
 
         <form onSubmit={handleSaveProfile} className="space-y-3 pt-1">
@@ -597,6 +619,31 @@ export default function SettingsView({ currentUser }) {
           </div>
         </form>
       </section>
+      {/* Account Switcher Modal */}
+      <AccountSwitcherModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        currentUser={currentUser}
+        savedAccounts={savedAccounts}
+        onSwitchAccount={async (account) => {
+          try {
+            const res = await switchAccount(account);
+            if (res?.redirect) {
+              navigate(`/login?email=${encodeURIComponent(res.email)}`);
+            } else {
+              navigate('/dashboard');
+            }
+          } catch (err) {
+            console.error('Account switch failed:', err);
+          }
+        }}
+        onRemoveAccount={removeSavedAccount}
+        onAddNewAccount={() => {
+          setIsAccountModalOpen(false);
+          logout();
+          navigate('/login');
+        }}
+      />
     </div>
   );
 }

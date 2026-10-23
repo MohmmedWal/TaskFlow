@@ -75,11 +75,38 @@ export function AuthProvider({ children }) {
     const switchAccount = async (targetAccount) => {
         if (!targetAccount) return;
         try {
-            await signOut(auth).catch(() => {});
-            localStorage.setItem('taskflow_local_auth_user', JSON.stringify(targetAccount));
-            setUser(targetAccount);
-            saveAccountToDevice(targetAccount);
-            return true;
+            const isGoogle =
+                targetAccount.provider === 'google.com' ||
+                targetAccount.provider?.includes('google') ||
+                targetAccount.email?.toLowerCase().includes('gmail');
+
+            if (isGoogle) {
+                // إذا كان حساب Google، نفتح نافذة Google الرسمية لاختيار الحساب
+                const result = await signInWithPopup(auth, googleProvider);
+                const loggedUser = result.user;
+                const socialUser = {
+                    uid: loggedUser.uid,
+                    email: loggedUser.email,
+                    displayName: loggedUser.displayName || loggedUser.email?.split('@')[0],
+                    photoURL: loggedUser.photoURL || null,
+                    provider: 'google.com',
+                };
+                localStorage.setItem('taskflow_local_auth_user', JSON.stringify(socialUser));
+                setUser(socialUser);
+                saveAccountToDevice(socialUser);
+                syncUserProfileSilently(loggedUser);
+                return { success: true, user: socialUser };
+            } else {
+                // لحسابات البريد وكلمة المرور، ننهي الجلسة الحالية ونوجه المستخدم لصفحة الدخول مع تعبئة الإيميل تلقائياً
+                await signOut(auth).catch(() => {});
+                localStorage.removeItem('taskflow_local_auth_user');
+                setUser(null);
+                return {
+                    redirect: true,
+                    email: targetAccount.email,
+                    displayName: targetAccount.displayName
+                };
+            }
         } catch (err) {
             console.error('Error switching account:', err);
             throw err;

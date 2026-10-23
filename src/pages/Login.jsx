@@ -1,10 +1,11 @@
-import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sun, Moon, Layers, AlertCircle, ArrowLeftRight, X, Check } from 'lucide-react';
 import AuthContext from '../context/AuthContext/AuthContext';
 import { useTheme } from '../context/ThemeContext/ThemeContext';
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -16,6 +17,18 @@ export default function Login() {
   const { login, register, loginWithSocial, savedAccounts = [], switchAccount, removeSavedAccount } = useContext(AuthContext);
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+
+  // استقبال بريد التبديل تلقائياً من الرابط
+  useEffect(() => {
+    const qEmail = searchParams.get('email');
+    if (qEmail) {
+      setEmail(qEmail);
+      setIsRegisterMode(false);
+      setTimeout(() => {
+        document.getElementById('login-password-input')?.focus();
+      }, 150);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,48 +118,65 @@ export default function Login() {
             </div>
 
             <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
-              {savedAccounts.map((acc) => (
-                <div
-                  key={acc.uid}
-                  onClick={async () => {
-                    await switchAccount(acc);
-                    navigate('/dashboard');
-                  }}
-                  className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 flex items-center justify-between gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] shadow-2xs group"
-                  title="انقر للدخول المباشر بهذا الحساب"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-bold text-[11px] flex-shrink-0">
-                      {acc.displayName?.[0]?.toUpperCase() || 'U'}
+              {savedAccounts.map((acc) => {
+                const isGoogle = acc.provider === 'google.com' || acc.email?.toLowerCase().includes('gmail');
+                return (
+                  <div
+                    key={acc.uid}
+                    onClick={async () => {
+                      if (isGoogle) {
+                        await handleSocialLogin('google');
+                      } else {
+                        setEmail(acc.email);
+                        setErrorMessage('');
+                        setIsRegisterMode(false);
+                        const pwd = document.getElementById('login-password-input');
+                        if (pwd) pwd.focus();
+                      }
+                    }}
+                    className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 flex items-center justify-between gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] shadow-2xs group"
+                    title={isGoogle ? "تسجيل الدخول عبر Google" : "اختيار هذا الحساب"}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center font-bold text-[11px] flex-shrink-0">
+                        {acc.displayName?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                      <div className="min-w-0 text-right leading-tight">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                            {acc.displayName}
+                          </p>
+                          {isGoogle && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900">
+                              Google
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate font-mono">
+                          {acc.email}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 text-right leading-tight">
-                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                        {acc.displayName}
-                      </p>
-                      <p className="text-[10px] text-zinc-400 truncate font-mono">
-                        {acc.email}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-zinc-100 dark:group-hover:text-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300">
-                      دخول
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSavedAccount(acc.uid);
-                      }}
-                      className="p-1 text-zinc-400 hover:text-rose-500 rounded-md transition-colors"
-                      title="حذف من الجهاز"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 group-hover:bg-zinc-900 group-hover:text-white dark:group-hover:bg-zinc-100 dark:group-hover:text-zinc-900 transition-colors text-zinc-700 dark:text-zinc-300">
+                        {isGoogle ? 'دخول Google' : 'اختيار'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSavedAccount(acc.uid);
+                        }}
+                        className="p-1 text-zinc-400 hover:text-rose-500 rounded-md transition-colors"
+                        title="حذف من الجهاز"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <p className="text-[10px] text-zinc-400 text-center pt-0.5">
@@ -192,6 +222,7 @@ export default function Login() {
               كلمة المرور
             </label>
             <input
+              id="login-password-input"
               type="password"
               required
               value={password}

@@ -116,9 +116,17 @@ export default function Header({
         onClose={() => setIsAccountModalOpen(false)}
         currentUser={user}
         savedAccounts={savedAccounts}
-        onSwitchAccount={(account) => {
-          switchAccount(account);
-          navigate('/dashboard');
+        onSwitchAccount={async (account) => {
+          try {
+            const res = await switchAccount(account);
+            if (res?.redirect) {
+              navigate(`/login?email=${encodeURIComponent(res.email)}`);
+            } else {
+              navigate('/dashboard');
+            }
+          } catch (err) {
+            console.error('Account switch failed:', err);
+          }
         }}
         onRemoveAccount={removeSavedAccount}
         onAddNewAccount={() => {

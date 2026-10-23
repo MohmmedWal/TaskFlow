@@ -62,6 +62,9 @@ export const db = getFirestore(app);
 
 // إعداد المزودات (Providers)
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+    prompt: 'select_account'
+});
 
 export const facebookProvider = new FacebookAuthProvider();
 facebookProvider.addScope('email');
