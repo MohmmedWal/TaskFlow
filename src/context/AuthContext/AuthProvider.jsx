@@ -27,7 +27,20 @@ export function AuthProvider({ children }) {
     const [savedAccounts, setSavedAccounts] = useState(() => {
         try {
             const raw = localStorage.getItem('taskflow_saved_accounts');
-            return raw ? JSON.parse(raw) : [];
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            // إزالة أي حسابات وهمية سابقة
+            const cleaned = parsed.filter(a =>
+                a &&
+                a.email &&
+                a.email !== 'user.google@gmail.com' &&
+                a.email !== 'user.facebook@facebook.com' &&
+                !a.uid?.startsWith('social_')
+            );
+            if (cleaned.length !== parsed.length) {
+                localStorage.setItem('taskflow_saved_accounts', JSON.stringify(cleaned));
+            }
+            return cleaned;
         } catch {
             return [];
         }
@@ -130,6 +143,17 @@ export function AuthProvider({ children }) {
             if (savedLocal) {
                 try {
                     preferredLocal = JSON.parse(savedLocal);
+                    // تنظيف أي حسابات وهمية سابقة
+                    if (
+                        preferredLocal &&
+                        (preferredLocal.email === 'user.google@gmail.com' ||
+                         preferredLocal.email === 'user.facebook@facebook.com' ||
+                         preferredLocal.uid?.startsWith('social_') ||
+                         preferredLocal.uid?.startsWith('usr_'))
+                    ) {
+                        localStorage.removeItem('taskflow_local_auth_user');
+                        preferredLocal = null;
+                    }
                 } catch {}
             }
 
@@ -167,31 +191,27 @@ export function AuthProvider({ children }) {
         try {
             return await signInWithEmailAndPassword(auth, cleanEmail, password);
         } catch (error) {
-            if (error.code === 'auth/operation-not-allowed') {
-                console.warn("Firebase Email/Password provider not enabled in console, using local auth session.");
-                const savedLocal = localStorage.getItem('taskflow_local_auth_user');
-                let localUser;
-                if (savedLocal) {
-                    try {
-                        const parsed = JSON.parse(savedLocal);
-                        if (parsed.email === cleanEmail) localUser = parsed;
-                    } catch {}
-                }
-                if (!localUser) {
-                    localUser = {
-                        uid: `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                        email: cleanEmail,
-                        displayName: cleanEmail.split('@')[0],
-                        providerData: [{ providerId: 'password' }],
-                    };
-                }
-                localStorage.setItem('taskflow_local_auth_user', JSON.stringify(localUser));
-                setUser(localUser);
-                saveAccountToDevice(localUser);
-                syncUserProfileSilently(localUser);
-                return { user: localUser };
+            console.error("Login Error:", error);
+            if (
+                error.code === 'auth/user-not-found' ||
+                error.code === 'auth/wrong-password' ||
+                error.code === 'auth/invalid-credential'
+            ) {
+                throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
             }
-            throw error;
+            if (error.code === 'auth/invalid-email') {
+                throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
+            }
+            if (error.code === 'auth/user-disabled') {
+                throw new Error("تم تعطيل هذا الحساب من قبل الإدارة.");
+            }
+            if (error.code === 'auth/too-many-requests') {
+                throw new Error("محاولات كثيرة خاطئة. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.");
+            }
+            if (error.code === 'auth/operation-not-allowed') {
+                throw new Error("تسجيل الدخول بالبريد الإلكتروني غير مفعّل في لوحة Firebase Console.");
+            }
+            throw new Error(error.message || "حدث خطأ أثناء تسجيل الدخول.");
         }
     };
 
@@ -235,21 +255,20 @@ export function AuthProvider({ children }) {
                 return newUser;
             }
         } catch (error) {
-            if (error.code === 'auth/operation-not-allowed') {
-                console.warn("Firebase Email/Password provider not enabled in console, using local auth session.");
-                const localUser = {
-                    uid: `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                    email: cleanEmail,
-                    displayName: cleanName,
-                    providerData: [{ providerId: 'password' }],
-                };
-                localStorage.setItem('taskflow_local_auth_user', JSON.stringify(localUser));
-                setUser(localUser);
-                saveAccountToDevice(localUser);
-                syncUserProfileSilently(localUser);
-                return localUser;
+            console.error("Register Error:", error);
+            if (error.code === 'auth/email-already-in-use') {
+                throw new Error("هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.");
             }
-            throw error;
+            if (error.code === 'auth/weak-password') {
+                throw new Error("كلمة المرور ضعيفة جداً. يجب أن تتكون من 6 خانات على الأقل.");
+            }
+            if (error.code === 'auth/invalid-email') {
+                throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
+            }
+            if (error.code === 'auth/operation-not-allowed') {
+                throw new Error("إنشاء الحسابات بالبريد الإلكتروني غير مفعّل في لوحة Firebase Console.");
+            }
+            throw new Error(error.message || "حدث خطأ أثناء إنشاء الحساب.");
         }
     };
 
@@ -284,33 +303,36 @@ export function AuthProvider({ children }) {
                 error.code === 'auth/popup-closed-by-user' ||
                 error.code === 'auth/cancelled-popup-request'
             ) {
-                throw new Error("تم إغلاق نافذة تسجيل الدخول.");
+                throw new Error("تم إغلاق نافذة تسجيل الدخول قبل إتمام التحقق.");
+            }
+
+            if (error.code === 'auth/popup-blocked') {
+                throw new Error("حظر المتصفح النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة (Popups) ثم المحاولة مجدداً.");
             }
 
             if (error.code === 'auth/account-exists-with-different-credential') {
                 throw new Error("يوجد حساب مسجل مسبقاً بنفس البريد الإلكتروني باستخدام مزود آخر.");
             }
 
-            if (
-                error.code === 'auth/operation-not-allowed' ||
-                error.code === 'auth/configuration-not-found' ||
-                error.code === 'auth/unauthorized-domain'
-            ) {
-                console.warn(`Firebase ${providerName} provider not enabled or domain unauthorized, using simulated social login.`);
-                const defaultEmail = providerName === 'google' ? 'user.google@gmail.com' : 'user.facebook@facebook.com';
-                const defaultName = providerName === 'google' ? 'حساب Google' : 'حساب Facebook';
-                const localSocialUser = {
-                    uid: `social_${providerName}_${Date.now()}`,
-                    email: defaultEmail,
-                    displayName: defaultName,
-                    photoURL: null,
-                    provider: providerName === 'google' ? 'google.com' : 'facebook.com',
-                };
-                localStorage.setItem('taskflow_local_auth_user', JSON.stringify(localSocialUser));
-                setUser(localSocialUser);
-                saveAccountToDevice(localSocialUser);
-                syncUserProfileSilently(localSocialUser);
-                return localSocialUser;
+            if (error.code === 'auth/unauthorized-domain') {
+                throw new Error("هذا النطاق غير مصرّح به في Firebase. أضف الدومين في: Firebase Console -> Authentication -> Settings -> Authorized domains.");
+            }
+
+            if (error.code === 'auth/operation-not-allowed') {
+                if (providerName === 'google') {
+                    throw new Error("تسجيل الدخول عبر Google غير مفعّل في Firebase Console. ادخل إلى Authentication -> Sign-in method -> Google واضغط تفعيل (Enable).");
+                }
+                if (providerName === 'facebook') {
+                    throw new Error("تسجيل الدخول عبر Facebook غير مفعّل في Firebase Console.");
+                }
+                throw new Error("طريقة تسجيل الدخول هذه غير مفعّلة في لوحة تحكم Firebase.");
+            }
+
+            if (error.code === 'auth/configuration-not-found') {
+                if (providerName === 'facebook') {
+                    throw new Error("تسجيل الدخول عبر Facebook يتطلب ربط App ID و App Secret من حساب المطورين Meta داخل Firebase Console.");
+                }
+                throw new Error("إعدادات المزود غير مكتملة في Firebase Console.");
             }
 
             throw new Error(error.message || "حدث خطأ أثناء تسجيل الدخول الاجتماعي.");

@@ -50,9 +50,7 @@ export default function Login() {
       await loginWithSocial(provider);
       navigate('/dashboard');
     } catch (error) {
-      if (error.message !== 'تم إغلاق نافذة الدخول.') {
-        setErrorMessage(error.message);
-      }
+      setErrorMessage(error.message || 'حدث خطأ أثناء تسجيل الدخول.');
     } finally {
       setIsLoading(false);
     }
