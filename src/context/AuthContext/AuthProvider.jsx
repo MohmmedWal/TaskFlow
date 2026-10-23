@@ -291,8 +291,12 @@ export function AuthProvider({ children }) {
                 throw new Error("يوجد حساب مسجل مسبقاً بنفس البريد الإلكتروني باستخدام مزود آخر.");
             }
 
-            if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/configuration-not-found') {
-                console.warn(`Firebase ${providerName} provider not enabled in console, using simulated social login.`);
+            if (
+                error.code === 'auth/operation-not-allowed' ||
+                error.code === 'auth/configuration-not-found' ||
+                error.code === 'auth/unauthorized-domain'
+            ) {
+                console.warn(`Firebase ${providerName} provider not enabled or domain unauthorized, using simulated social login.`);
                 const defaultEmail = providerName === 'google' ? 'user.google@gmail.com' : 'user.facebook@facebook.com';
                 const defaultName = providerName === 'google' ? 'حساب Google' : 'حساب Facebook';
                 const localSocialUser = {
